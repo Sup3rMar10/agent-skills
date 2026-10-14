@@ -161,6 +161,29 @@ class CloneOfThisRepo(unittest.TestCase):
         self.assertEqual(len(checks(r, "clones-other-repo")), 1)
 
 
+class AuditingASubfolder(unittest.TestCase):
+    """Pointing the tool at a folder inside a checkout must still know which repository it belongs to."""
+
+    def checkout(self, readme):
+        top = make_repo({"apps/web/README.md": readme, "apps/web/app.py": "", "apps/web/requirements.txt": ""}, name="mine")
+        (top / ".git").mkdir()
+        (top / ".git" / "config").write_text('[remote "origin"]\n\turl = https://github.com/me/mine.git\n', encoding="utf-8")
+        return top
+
+    def test_cloning_the_enclosing_repo_is_not_foreign_and_its_paths_resolve(self):
+        top = self.checkout(sh("git clone https://github.com/me/mine.git", "cd mine/apps/web", "pip install -r requirements.txt", "streamlit run app.py"))
+        self.assertEqual(quickstart_check.audit(top / "apps" / "web")["findings"], [])
+
+    def test_a_wrong_path_is_still_caught_from_the_subfolder(self):
+        top = self.checkout(sh("git clone https://github.com/me/mine.git", "cd mine/apps/typo"))
+        found = checks(quickstart_check.audit(top / "apps" / "web"), "missing-path")
+        self.assertEqual(len(found), 1)
+
+    def test_a_foreign_clone_is_still_foreign(self):
+        top = self.checkout(sh("git clone https://github.com/me/other.git"))
+        self.assertEqual(len(checks(quickstart_check.audit(top / "apps" / "web"), "clones-other-repo")), 1)
+
+
 class MissingScript(unittest.TestCase):
     PKG = json.dumps({"scripts": {"start": "node x.js", "build": "vite build"}})
 

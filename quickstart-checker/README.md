@@ -64,7 +64,7 @@ To use it as a skill, copy this folder into your agent's skills directory (`~/.c
 ## Tests
 
 ```bash
-python3 evals/quickstart-checker/test_quickstart_check.py     # from the repo root; 46 tests, about a second
+python3 evals/quickstart-checker/test_quickstart_check.py     # from the repo root; 49 tests, about a second
 ```
 
 The tests cover what each check flags and, just as important, what it must not flag. They were also run against deliberately broken copies of the script to confirm they fail when a check stops working.

@@ -89,13 +89,22 @@ def is_readme(path: Path) -> bool:
     return bool(re.match(r"^readme(\..+)?$", path.name, re.I)) and path.suffix.lower() in {".md", ".markdown", ".rst", ".txt", ""}
 
 
+def checkout_root(root: Path) -> Path:
+    """The folder holding .git when root is inside a checkout, so auditing a subfolder still knows its repo."""
+    for folder in [root, *root.parents]:
+        if (folder / ".git").exists():
+            return folder
+    return root
+
+
 def repo_name(root: Path) -> str:
-    cfg = root / ".git" / "config"
+    top = checkout_root(root)
+    cfg = top / ".git" / "config"
     if cfg.is_file():
         m = re.search(r"url\s*=\s*\S*?/([^/\s]+?)(?:\.git)?\s*$", read_text(cfg), re.M)
         if m:
             return m.group(1)
-    return root.name
+    return top.name
 
 
 # --------------------------------------------------------------------------- README commands
@@ -160,6 +169,7 @@ def check_readme_commands(root, readme: Path, findings):
     text = read_text(readme)
     base_dir = readme.parent
     me = repo_name(root)
+    top = checkout_root(root)
     for _, block in shell_blocks(text):
         cwd = base_dir
         created = set()
@@ -169,7 +179,7 @@ def check_readme_commands(root, readme: Path, findings):
         def candidates(token):
             if own_clone and (token == own_clone or token.startswith(own_clone + "/")):
                 sub = token[len(own_clone):].lstrip("/")
-                yield root / sub if sub else root
+                yield top / sub if sub else top
             for base in (cwd, base_dir, root):
                 yield base / token
             # "run from the folder that contains this one": a path that starts with this README's own folder name
